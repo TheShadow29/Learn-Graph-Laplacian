@@ -3,6 +3,7 @@ from data_loader import synthetic_data_gen
 import pdb
 from cvxopt import matrix, solvers
 import networkx as nx
+from tqdm import tqdm
 # def solve_L(Y, alpha, beta):
 #     L = np.zeros(Y.shape[0], Y.shape[0])
 
@@ -22,7 +23,7 @@ def gl_sig_model(inp_signal, max_iter, alpha, beta):
     b_c = matrix(b_mat)
     G_c = matrix(G_mat)
     h_c = matrix(h_mat)
-    for _ in range(max_iter):
+    for it in tqdm(range(max_iter)):
         # Update L
         q_mat = alpha * np.dot(np.ravel(np.dot(Y, Y.T)), M_mat)
         q_c = matrix(q_mat)
@@ -32,6 +33,7 @@ def gl_sig_model(inp_signal, max_iter, alpha, beta):
         L = l_vec.reshape(num_vertices, num_vertices)
         # Update Y
         Y = (np.eye(num_vertices) + alpha * L)
+        print
     return L, Y
 
 
@@ -118,10 +120,14 @@ def create_G_mat(n):
 
 
 if __name__ == "__main__":
+    solvers.options['show_progress'] = False
     syn = synthetic_data_gen()
     num_nodes = syn.num_vertices
-    alpha = 0.012
-    beta = 0.79
-    L_out, Y_out = gl_sig_model(syn.graph_signals_er, 1000, alpha, beta)
-    L_gt = nx.laplacian_matrix(syn.er_graph)
-    print('Normed difference', np.linalg.norm(L_out, L_gt))
+    L_out, Y_out = gl_sig_model(syn.graph_signals_er, 1000, syn.alpha_er, syn.beta_er)
+    L_out[L_out < 1e-4] = 0
+    W_out = -L_out
+    np.fill_diagonal(W_out, 0)
+    # L_gt = nx.laplacian_matrix(syn.er_graph)
+    W_gt = nx.adjacency_matrix(syn.er_graph)
+    # print('Normed difference', np.linalg.norm(L_out - L_gt))
+    print('Normed difference', np.linalg.norm(W_out - W_gt))

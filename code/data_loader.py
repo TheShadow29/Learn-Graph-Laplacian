@@ -29,6 +29,18 @@ class synthetic_data_gen:
         self.graph_signals_er = np.random.multivariate_normal(mean, cov_er, 100)
         self.graph_signals_ba = np.random.multivariate_normal(mean, cov_ba, 100)
         self.graph_signals_rand = np.random.multivariate_normal(mean, cov_rand, 100)
+
+        self.alpha_er = 0.032
+        self.beta_er = 0.1
+        self.thr_er = 0.46
+
+        self.alpha_rnd = 0.012
+        self.beta_rnd = 0.79
+        self.thr_rnd = 0.06
+
+        self.alpha_ba = 0.0025
+        self.beta_ba = 0.05
+        self.thr_ba = 0.46
         # pdb.set_trace()
         return
 
