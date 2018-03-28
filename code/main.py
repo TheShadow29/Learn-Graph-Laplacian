@@ -29,7 +29,9 @@ def create_static_matrices_for_L_opt(num_vertices, beta):
     M_mat = create_dup_matrix(num_vertices)
     P_mat = 2 * beta * np.dot(M_mat.T, M_mat)
     A_mat = create_A_mat(num_vertices)
-    return M_mat, P_mat
+    b_mat = create_b_mat(num_vertices)
+    G_mat = create_G_mat(num_vertices)
+    return M_mat, P_mat, A_mat, b_mat
 
 
 def get_u_vec(i, j, n):
@@ -83,6 +85,23 @@ def create_A_mat(n):
     A_mat[n, np.cumsum(np.arange(n, 1, -1))] = 1
 
     return A_mat
+
+
+def create_b_mat(n):
+    b_mat = np.zeors(n+1)
+    b_mat[n] = n
+    return b_mat
+
+
+def create_G_mat(n):
+    G_mat = np.zeros((n*(n-1)//2, n*(n+1)//2))
+    tmp_vec = np.cumsum(np.arange(n, 1, -1))
+    tmp2_vec = np.append([0], tmp_vec)
+    tmp3_vec = np.delete(np.arange(n*(n+1)//2), tmp2_vec)
+    for i in range(G_mat.shape[0]):
+        G_mat[i, tmp3_vec[i]] = 1
+
+    return G_mat
 
 
 if __name__ == "__main__":
