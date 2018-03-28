@@ -119,15 +119,30 @@ def create_G_mat(n):
     return G_mat
 
 
+def get_precision_er(w_out, w_gt):
+    num_cor = 0
+    tot_num = 0
+    for r in range(w_out.shape[0]):
+        for c in range(w_out.shape[1]):
+            if w_out[r, c] > 0:
+                tot_num += 1
+                if w_gt[r, c] > 0:
+                    num_cor += 1
+    print(num_cor, tot_num, num_cor / tot_num)
+    return num_cor / tot_num
+
+
 if __name__ == "__main__":
     solvers.options['show_progress'] = False
     syn = synthetic_data_gen()
     num_nodes = syn.num_vertices
     L_out, Y_out = gl_sig_model(syn.graph_signals_er, 1000, syn.alpha_er, syn.beta_er)
-    L_out[L_out < 1e-4] = 0
+    # L_out[L_out < 1e-4] = 0
     W_out = -L_out
     np.fill_diagonal(W_out, 0)
     # L_gt = nx.laplacian_matrix(syn.er_graph)
     W_gt = nx.adjacency_matrix(syn.er_graph)
     # print('Normed difference', np.linalg.norm(L_out - L_gt))
-    print('Normed difference', np.linalg.norm(W_out - W_gt))
+    # print('Normed difference', np.linalg.norm(W_out - W_gt))
+    # pdb.set_trace()
+    prec = get_precision_er(W_out, W_gt)
