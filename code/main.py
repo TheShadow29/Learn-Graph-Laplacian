@@ -24,6 +24,7 @@ def gl_sig_model(inp_signal, max_iter, alpha, beta):
     G_c = matrix(G_mat)
     h_c = matrix(h_mat)
     for it in tqdm(range(max_iter)):
+        # pdb.set_trace()
         # Update L
         q_mat = alpha * np.dot(np.ravel(np.dot(Y, Y.T)), M_mat)
         q_c = matrix(q_mat)
@@ -32,7 +33,7 @@ def gl_sig_model(inp_signal, max_iter, alpha, beta):
         l_vec = np.dot(M_mat, l_vech)
         L = l_vec.reshape(num_vertices, num_vertices)
         # Update Y
-        Y = (np.eye(num_vertices) + alpha * L)
+        Y = np.dot(np.linalg.pinv(np.eye(num_vertices) + alpha * L), inp_signal.T)
         print
     return L, Y
 
@@ -139,6 +140,7 @@ if __name__ == "__main__":
     L_out, Y_out = gl_sig_model(syn.graph_signals_er, 1000, syn.alpha_er, syn.beta_er)
     # L_out[L_out < 1e-4] = 0
     W_out = -L_out
+    W_out[W_out < syn.thr_er] = 0
     np.fill_diagonal(W_out, 0)
     # L_gt = nx.laplacian_matrix(syn.er_graph)
     W_gt = nx.adjacency_matrix(syn.er_graph)
