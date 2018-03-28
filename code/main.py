@@ -1,25 +1,37 @@
 import numpy as np
 from data_loader import synthetic_data_gen
 import pdb
+from cvxopt import matrix, solvers
+import networkx as nx
+# def solve_L(Y, alpha, beta):
+#     L = np.zeros(Y.shape[0], Y.shape[0])
 
-
-def solve_L(Y, alpha, beta):
-    L = np.zeros(Y.shape[0], Y.shape[0])
-
-    return L
+#     return L
 
 
 def gl_sig_model(inp_signal, max_iter, alpha, beta):
     """
     Returns Output Signal Y, Graph Laplacian L
     """
-    y = inp_signal
-    ldim = inp_signal.shape[1]
+    Y = inp_signal.T
+    num_vertices = inp_signal.shape[1]
+    M_mat, P_mat, A_mat, b_mat, G_mat, h_mat = create_static_matrices_for_L_opt(num_vertices, beta)
+    # M_c = matrix(M_mat)
+    P_c = matrix(P_mat)
+    A_c = matrix(A_mat)
+    b_c = matrix(b_mat)
+    G_c = matrix(G_mat)
+    h_c = matrix(h_mat)
     for _ in range(max_iter):
         # Update L
-        L = solve_L(Y, alpha, beta)
+        q_mat = alpha * np.dot(np.ravel(np.dot(Y, Y.T)), M_mat)
+        q_c = matrix(q_mat)
+        sol = solvers.qp(P_c, q_c, G_c, h_c, A_c, b_c)
+        l_vech = np.array(sol['x'])
+        l_vec = np.dot(M_mat, l_vech)
+        L = l_vec.reshape(num_vertices, num_vertices)
         # Update Y
-        Y = (np.eye(ldim) + alpha * L)
+        Y = (np.eye(num_vertices) + alpha * L)
     return L, Y
 
 
@@ -31,7 +43,8 @@ def create_static_matrices_for_L_opt(num_vertices, beta):
     A_mat = create_A_mat(num_vertices)
     b_mat = create_b_mat(num_vertices)
     G_mat = create_G_mat(num_vertices)
-    return M_mat, P_mat, A_mat, b_mat
+    h_mat = np.zeros(G_mat.shape[0])
+    return M_mat, P_mat, A_mat, b_mat, G_mat, h_mat
 
 
 def get_u_vec(i, j, n):
@@ -88,7 +101,7 @@ def create_A_mat(n):
 
 
 def create_b_mat(n):
-    b_mat = np.zeors(n+1)
+    b_mat = np.zeros(n+1)
     b_mat[n] = n
     return b_mat
 
@@ -107,3 +120,8 @@ def create_G_mat(n):
 if __name__ == "__main__":
     syn = synthetic_data_gen()
     num_nodes = syn.num_vertices
+    alpha = 0.012
+    beta = 0.79
+    L_out, Y_out = gl_sig_model(syn.graph_signals_er, 1000, alpha, beta)
+    L_gt = nx.laplacian_matrix(syn.er_graph)
+    print('Normed difference', np.linalg.norm(L_out, L_gt))

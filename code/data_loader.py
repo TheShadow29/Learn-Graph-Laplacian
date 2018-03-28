@@ -19,9 +19,16 @@ class synthetic_data_gen:
             d['weight'] = np.exp(-np.linalg.norm(pos1 - pos2) / (2 * 0.5 * 0.5))
 
         mean = np.zeros(self.num_vertices)
-        cov = np.linalg.pinv(nx.laplacian_matrix(self.er_graph) + np.eye(self.num_vertices) * 0.5)
+        cov_er = np.linalg.pinv(nx.laplacian_matrix(self.er_graph) +
+                                np.eye(self.num_vertices) * 0.5)
+        cov_ba = np.linalg.pinv(nx.laplacian_matrix(self.ba_graph) +
+                                np.eye(self.num_vertices) * 0.5)
+        cov_rand = np.linalg.pinv(nx.laplacian_matrix(self.random_graph) +
+                                  np.eye(self.num_vertices) * 0.5)
         # Each row is a signal
-        self.graph_signals_random = np.random.multivariate_normal(mean, cov, 100)
+        self.graph_signals_er = np.random.multivariate_normal(mean, cov_er, 100)
+        self.graph_signals_ba = np.random.multivariate_normal(mean, cov_ba, 100)
+        self.graph_signals_rand = np.random.multivariate_normal(mean, cov_rand, 100)
         # pdb.set_trace()
         return
 
