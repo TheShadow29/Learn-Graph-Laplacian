@@ -28,6 +28,7 @@ def create_static_matrices_for_L_opt(num_vertices, beta):
     #
     M_mat = create_dup_matrix(num_vertices)
     P_mat = 2 * beta * np.dot(M_mat.T, M_mat)
+    A_mat = create_A_mat(num_vertices)
     return M_mat, P_mat
 
 
@@ -57,12 +58,31 @@ def create_dup_matrix(num_vertices):
     return M_mat
 
 
+def get_a_vec(i, n):
+    a_vec = np.zeros(n*(n+1)//2)
+    if i == 0:
+        a_vec[np.arange(n)] = 1
+    else:
+        tmp_vec = np.arange(n-1, n-i-1, -1)
+        tmp2_vec = np.append([i], tmp_vec)
+        tmp3_vec = np.cumsum(tmp2_vec)
+        a_vec[tmp3_vec] = 1
+        end_pt = tmp3_vec[-1]
+        a_vec[np.arange(end_pt, end_pt + n-i)] = 1
+
+    return a_vec
+
+
 def create_A_mat(n):
-    A_mat = np.zeros((n, n*(n+1)//2))
-    A_mat[0, 0] = 1
-    A_mat[0, np.cumsum(np.arange(n, 0, -1))] = 1
-    # for i in range(1, A_mat.shape[0]+1):
-    #     A_mat[i, :] =
+    A_mat = np.zeros((n+1, n*(n+1)//2))
+    # A_mat[0, 0] = 1
+    # A_mat[0, np.cumsum(np.arange(n, 0, -1))] = 1
+    for i in range(0, A_mat.shape[0] - 1):
+        A_mat[i, :] = get_a_vec(i, n)
+    A_mat[n, 0] = 1
+    A_mat[n, np.cumsum(np.arange(n, 1, -1))] = 1
+
+    return A_mat
 
 
 if __name__ == "__main__":
