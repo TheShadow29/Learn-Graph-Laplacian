@@ -23,18 +23,32 @@ def gl_sig_model(inp_signal, max_iter, alpha, beta):
     b_c = matrix(b_mat)
     G_c = matrix(G_mat)
     h_c = matrix(h_mat)
+    curr_cost = np.linalg.norm(np.ones((num_vertices, num_vertices)), 'fro')
     for it in tqdm(range(max_iter)):
         # pdb.set_trace()
         # Update L
+        prev_cost = curr_cost
         q_mat = alpha * np.dot(np.ravel(np.dot(Y, Y.T)), M_mat)
         q_c = matrix(q_mat)
         sol = solvers.qp(P_c, q_c, G_c, h_c, A_c, b_c)
         l_vech = np.array(sol['x'])
         l_vec = np.dot(M_mat, l_vech)
         L = l_vec.reshape(num_vertices, num_vertices)
+        # Assert L is correctly learnt.
+        assert L.trace() == num_vertices
+        assert np.all(L - np.diag(np.diag(L)) <= 0)
+        assert np.dot(L, np.ones(num_vertices)) == np.zeros(num_vertices)
+        print('All constraints satisfied')
         # Update Y
         Y = np.dot(np.linalg.pinv(np.eye(num_vertices) + alpha * L), inp_signal.T)
-        print
+        curr_cost = (np.linalg.norm(inp_signal.T - Y, 'fro') +
+                     alpha * np.dot(np.dot(Y.T, L), Y).trace() +
+                     beta * np.linalg.norm(L, 'fro'))
+        # print(curr_cost)
+        if np.abs(curr_cost - prev_cost) < 1e-4:
+            print('Stopped at Iteration', it)
+            break
+        # print
     return L, Y
 
 
@@ -132,6 +146,8 @@ def get_precision_er(w_out, w_gt):
     print(num_cor, tot_num, num_cor / tot_num)
     return num_cor / tot_num
 
+# def get_precision_rand(w_out, w_gt):
+
 
 if __name__ == "__main__":
     solvers.options['show_progress'] = False
@@ -142,8 +158,8 @@ if __name__ == "__main__":
     W_out = -L_out
     W_out[W_out < syn.thr_er] = 0
     np.fill_diagonal(W_out, 0)
-    # L_gt = nx.laplacian_matrix(syn.er_graph)
-    W_gt = nx.adjacency_matrix(syn.er_graph)
+    L_gt = nx.laplacian_matrix(syn.er_graph)
+    W_gt = nx.adjacency_matrix(syn.random_graph)
     # print('Normed difference', np.linalg.norm(L_out - L_gt))
     # print('Normed difference', np.linalg.norm(W_out - W_gt))
     # pdb.set_trace()
