@@ -25,17 +25,17 @@ class synthetic_data_gen:
                                      np.eye(self.num_vertices) * 0.5)
         self.cov_rand = np.linalg.pinv(nx.laplacian_matrix(self.random_graph) +
                                        np.eye(self.num_vertices) * 0.5)
-        self.alpha_er = 0.032
-        self.beta_er = 0.1
-        self.thr_er = 0.46
-
         self.alpha_rnd = 0.012
         self.beta_rnd = 0.79
         self.thr_rnd = 0.06
 
+        self.alpha_er = 0.0032
+        self.beta_er = 0.1
+        self.thr_er = 0.08
+
         self.alpha_ba = 0.0025
         self.beta_ba = 0.05
-        self.thr_ba = 0.46
+        self.thr_ba = 0.18
         # pdb.set_trace()
         return
 
@@ -46,4 +46,4 @@ class synthetic_data_gen:
         graph_signals_rand = np.random.multivariate_normal(self.mean, self.cov_rand, 100)
         return (graph_signals_er, graph_signals_ba, graph_signals_rand)
 # class data_loader:
-#     def __init__(self):
+#     def __init__(self):x

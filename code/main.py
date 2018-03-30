@@ -48,7 +48,7 @@ def gl_sig_model(inp_signal, max_iter, alpha, beta):
                      beta * np.linalg.norm(L, 'fro'))
         # print(curr_cost)
         if np.abs(curr_cost - prev_cost) < 1e-4:
-            print('Stopped at Iteration', it)
+            # print('Stopped at Iteration', it)
             break
         # print
     return L, Y
@@ -145,24 +145,24 @@ def get_precision_er(w_out, w_gt):
                 tot_num += 1
                 if w_gt[r, c] > 0:
                     num_cor += 1
-    print(num_cor, tot_num, num_cor / tot_num)
+    # print(num_cor, tot_num, num_cor / tot_num)
     return num_cor / tot_num
 
 
-def get_precision_er_L(L_out, L_gt):
+def get_precision_er_L(L_out, L_gt, thresh=1e-4):
     W_out = -L_out
     np.fill_diagonal(W_out, 0)
-    W_out[W_out < 1e-4] = 0
+    W_out[W_out < thresh] = 0
     # pdb.set_trace()
     W_gt = -L_gt.todense()
     np.fill_diagonal(W_gt, 0)
     return get_precision_er(W_out, W_gt)
 
 
-def get_recall_er_L(L_out, L_gt):
+def get_recall_er_L(L_out, L_gt, thresh=1e-4):
     W_out = -L_out
     np.fill_diagonal(W_out, 0)
-    W_out[W_out < 1e-4] = 0
+    W_out[W_out < thresh] = 0
     # pdb.set_trace()
     W_gt = -L_gt.todense()
     np.fill_diagonal(W_gt, 0)
@@ -178,17 +178,17 @@ if __name__ == "__main__":
     prec_ba_list = []
     recall_er_list = []
     recall_ba_list = []
-    for i in tqdm(range(10)):
+    for i in tqdm(range(100)):
         np.random.seed(i)
         graph_signals_er, graph_signals_ba, graph_signals_rand = syn.get_graph_signals()
         L_er, Y_er = gl_sig_model(graph_signals_er, 1000, syn.alpha_er, syn.beta_er)
         L_ba, Y_ba = gl_sig_model(graph_signals_ba, 1000, syn.alpha_er, syn.beta_er)
         L_er_gt = nx.laplacian_matrix(syn.er_graph)
         L_ba_gt = nx.laplacian_matrix(syn.ba_graph)
-        prec_er = get_precision_er_L(L_er, L_er_gt)
-        prec_ba = get_precision_er_L(L_ba, L_ba_gt)
-        recall_er = get_recall_er_L(L_er, L_er_gt)
-        recall_ba = get_recall_er_L(L_ba, L_ba_gt)
+        prec_er = get_precision_er_L(L_er, L_er_gt, thresh=syn.thr_er)
+        prec_ba = get_precision_er_L(L_ba, L_ba_gt, thresh=syn.thr_ba)
+        recall_er = get_recall_er_L(L_er, L_er_gt, thresh=syn.thr_er)
+        recall_ba = get_recall_er_L(L_ba, L_ba_gt, thresh=syn.thr_ba)
 
         prec_er_list.append(prec_er)
         recall_er_list.append(recall_er)
