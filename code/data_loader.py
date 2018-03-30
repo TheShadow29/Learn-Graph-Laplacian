@@ -18,18 +18,13 @@ class synthetic_data_gen:
             pos2 = np.array(self.random_graph.node[v]['pos'])
             d['weight'] = np.exp(-np.linalg.norm(pos1 - pos2) / (2 * 0.5 * 0.5))
 
-        mean = np.zeros(self.num_vertices)
-        cov_er = np.linalg.pinv(nx.laplacian_matrix(self.er_graph) +
-                                np.eye(self.num_vertices) * 0.5)
-        cov_ba = np.linalg.pinv(nx.laplacian_matrix(self.ba_graph) +
-                                np.eye(self.num_vertices) * 0.5)
-        cov_rand = np.linalg.pinv(nx.laplacian_matrix(self.random_graph) +
-                                  np.eye(self.num_vertices) * 0.5)
-        # Each row is a signal
-        self.graph_signals_er = np.random.multivariate_normal(mean, cov_er, 100)
-        self.graph_signals_ba = np.random.multivariate_normal(mean, cov_ba, 100)
-        self.graph_signals_rand = np.random.multivariate_normal(mean, cov_rand, 100)
-
+        self.mean = np.zeros(self.num_vertices)
+        self.cov_er = np.linalg.pinv(nx.laplacian_matrix(self.er_graph) +
+                                     np.eye(self.num_vertices) * 0.5)
+        self.cov_ba = np.linalg.pinv(nx.laplacian_matrix(self.ba_graph) +
+                                     np.eye(self.num_vertices) * 0.5)
+        self.cov_rand = np.linalg.pinv(nx.laplacian_matrix(self.random_graph) +
+                                       np.eye(self.num_vertices) * 0.5)
         self.alpha_er = 0.032
         self.beta_er = 0.1
         self.thr_er = 0.46
@@ -44,5 +39,11 @@ class synthetic_data_gen:
         # pdb.set_trace()
         return
 
+    def get_graph_signals(self):
+        # Each row is a signal
+        graph_signals_er = np.random.multivariate_normal(self.mean, self.cov_er, 100)
+        graph_signals_ba = np.random.multivariate_normal(self.mean, self.cov_ba, 100)
+        graph_signals_rand = np.random.multivariate_normal(self.mean, self.cov_rand, 100)
+        return (graph_signals_er, graph_signals_ba, graph_signals_rand)
 # class data_loader:
 #     def __init__(self):

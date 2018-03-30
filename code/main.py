@@ -24,7 +24,7 @@ def gl_sig_model(inp_signal, max_iter, alpha, beta):
     G_c = matrix(G_mat)
     h_c = matrix(h_mat)
     curr_cost = np.linalg.norm(np.ones((num_vertices, num_vertices)), 'fro')
-    for it in tqdm(range(max_iter)):
+    for it in range(max_iter):
         # pdb.set_trace()
         # Update L
         prev_cost = curr_cost
@@ -35,12 +35,14 @@ def gl_sig_model(inp_signal, max_iter, alpha, beta):
         l_vec = np.dot(M_mat, l_vech)
         L = l_vec.reshape(num_vertices, num_vertices)
         # Assert L is correctly learnt.
-        assert L.trace() == num_vertices
+        # assert L.trace() == num_vertices
+        assert np.allclose(L.trace(), num_vertices)
         assert np.all(L - np.diag(np.diag(L)) <= 0)
-        assert np.dot(L, np.ones(num_vertices)) == np.zeros(num_vertices)
-        print('All constraints satisfied')
+        assert np.allclose(np.dot(L, np.ones(num_vertices)), np.zeros(num_vertices))
+        # print('All constraints satisfied')
         # Update Y
-        Y = np.dot(np.linalg.pinv(np.eye(num_vertices) + alpha * L), inp_signal.T)
+        Y = np.dot(np.linalg.inv(np.eye(num_vertices) + alpha * L), inp_signal.T)
+
         curr_cost = (np.linalg.norm(inp_signal.T - Y, 'fro') +
                      alpha * np.dot(np.dot(Y.T, L), Y).trace() +
                      beta * np.linalg.norm(L, 'fro'))
@@ -146,21 +148,67 @@ def get_precision_er(w_out, w_gt):
     print(num_cor, tot_num, num_cor / tot_num)
     return num_cor / tot_num
 
-# def get_precision_rand(w_out, w_gt):
+
+def get_precision_er_L(L_out, L_gt):
+    W_out = -L_out
+    np.fill_diagonal(W_out, 0)
+    W_out[W_out < 1e-4] = 0
+    # pdb.set_trace()
+    W_gt = -L_gt.todense()
+    np.fill_diagonal(W_gt, 0)
+    return get_precision_er(W_out, W_gt)
+
+
+def get_recall_er_L(L_out, L_gt):
+    W_out = -L_out
+    np.fill_diagonal(W_out, 0)
+    W_out[W_out < 1e-4] = 0
+    # pdb.set_trace()
+    W_gt = -L_gt.todense()
+    np.fill_diagonal(W_gt, 0)
+    return get_precision_er(W_gt, W_out)
 
 
 if __name__ == "__main__":
+    # np.random.seed(0)
     solvers.options['show_progress'] = False
     syn = synthetic_data_gen()
     num_nodes = syn.num_vertices
-    L_out, Y_out = gl_sig_model(syn.graph_signals_er, 1000, syn.alpha_er, syn.beta_er)
-    # L_out[L_out < 1e-4] = 0
-    W_out = -L_out
-    W_out[W_out < syn.thr_er] = 0
-    np.fill_diagonal(W_out, 0)
-    L_gt = nx.laplacian_matrix(syn.er_graph)
-    W_gt = nx.adjacency_matrix(syn.random_graph)
-    # print('Normed difference', np.linalg.norm(L_out - L_gt))
-    # print('Normed difference', np.linalg.norm(W_out - W_gt))
-    # pdb.set_trace()
-    prec = get_precision_er(W_out, W_gt)
+    prec_er_list = []
+    prec_ba_list = []
+    recall_er_list = []
+    recall_ba_list = []
+    for i in tqdm(range(10)):
+        np.random.seed(i)
+        graph_signals_er, graph_signals_ba, graph_signals_rand = syn.get_graph_signals()
+        L_er, Y_er = gl_sig_model(graph_signals_er, 1000, syn.alpha_er, syn.beta_er)
+        L_ba, Y_ba = gl_sig_model(graph_signals_ba, 1000, syn.alpha_er, syn.beta_er)
+        L_er_gt = nx.laplacian_matrix(syn.er_graph)
+        L_ba_gt = nx.laplacian_matrix(syn.ba_graph)
+        prec_er = get_precision_er_L(L_er, L_er_gt)
+        prec_ba = get_precision_er_L(L_ba, L_ba_gt)
+        recall_er = get_recall_er_L(L_er, L_er_gt)
+        recall_ba = get_recall_er_L(L_ba, L_ba_gt)
+
+        prec_er_list.append(prec_er)
+        recall_er_list.append(recall_er)
+
+        prec_ba_list.append(prec_ba)
+        recall_ba_list.append(recall_ba)
+
+    print('Avg Prec ER', np.mean(prec_er_list))
+    print('Avg Prec BA', np.mean(prec_ba_list))
+    print('Avg Recall ER', np.mean(recall_er_list))
+    print('Avg Recall BA', np.mean(recall_ba_list))
+
+    # L_out, Y_out = gl_sig_model(syn.graph_signals_er, 1000, syn.alpha_er, syn.beta_er)
+    # # L_out[L_out < 1e-4] = 0
+    # W_out = -L_out
+    # W_out[W_out < syn.thr_er] = 0
+    # np.fill_diagonal(W_out, 0)
+    # L_gt = nx.laplacian_matrix(syn.er_graph)
+    # W_gt = nx.adjacency_matrix(syn.random_graph)
+    # # print('Normed difference', np.linalg.norm(L_out - L_gt))
+    # # print('Normed difference', np.linalg.norm(W_out - W_gt))
+    # # pdb.set_trace()
+    # prec = get_precision_er(W_out, W_gt)
