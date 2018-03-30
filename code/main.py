@@ -169,38 +169,96 @@ def get_recall_er_L(L_out, L_gt, thresh=1e-4):
     return get_precision_er(W_gt, W_out)
 
 
+def get_precision_rnd(w_out, w_gt):
+    num_cor = 0
+    tot_num = 0
+    for r in range(w_out.shape[0]):
+        for c in range(w_out.shape[1]):
+            if w_out[r, c] > 0:
+                tot_num += 1
+                if w_gt[r, c] > 0:
+                    num_cor += 1
+    # print(num_cor, tot_num, num_cor / tot_num)
+    return num_cor / tot_num
+
+
+def get_prec_recall_rnd_L(L_out, L_gt, thresh=1e-4):
+    W_out = -L_out
+    np.fill_diagonal(W_out, 0)
+    W_out[W_out < thresh] = 0
+    # pdb.set_trace()
+    W_gt = -L_gt.todense()
+    np.fill_diagonal(W_gt, 0)
+    prec = get_precision_rnd(W_out, W_gt)
+    rec = get_precision_rnd(W_gt, W_out)
+    return prec, rec
+
+
+def get_f_score(prec, recall):
+    return 2 * prec * recall / (prec + recall)
+
+
 if __name__ == "__main__":
     # np.random.seed(0)
     solvers.options['show_progress'] = False
     syn = synthetic_data_gen()
     num_nodes = syn.num_vertices
+
     prec_er_list = []
     prec_ba_list = []
+    prec_rnd_list = []
+
     recall_er_list = []
     recall_ba_list = []
+    recall_rnd_list = []
+
+    f_score_er_list = []
+    f_score_ba_list = []
+    f_score_rnd_list = []
+
     for i in tqdm(range(100)):
         np.random.seed(i)
         graph_signals_er, graph_signals_ba, graph_signals_rand = syn.get_graph_signals()
         L_er, Y_er = gl_sig_model(graph_signals_er, 1000, syn.alpha_er, syn.beta_er)
         L_ba, Y_ba = gl_sig_model(graph_signals_ba, 1000, syn.alpha_er, syn.beta_er)
+        L_rnd, Y_rnd = gl_sig_model(graph_signals_rand, 1000, syn.alpha_rnd, syn.beta_rnd)
+
         L_er_gt = nx.laplacian_matrix(syn.er_graph)
         L_ba_gt = nx.laplacian_matrix(syn.ba_graph)
+        L_rnd_gt = nx.laplacian_matrix(syn.random_graph)
+
         prec_er = get_precision_er_L(L_er, L_er_gt, thresh=syn.thr_er)
         prec_ba = get_precision_er_L(L_ba, L_ba_gt, thresh=syn.thr_ba)
+
         recall_er = get_recall_er_L(L_er, L_er_gt, thresh=syn.thr_er)
         recall_ba = get_recall_er_L(L_ba, L_ba_gt, thresh=syn.thr_ba)
 
+        prec_rnd, recall_rnd = get_prec_recall_rnd_L(L_rnd, L_rnd_gt, thresh=syn.thr_rnd)
+
         prec_er_list.append(prec_er)
         recall_er_list.append(recall_er)
+        f_score_er_list.append(get_f_score(prec_er, recall_er))
 
         prec_ba_list.append(prec_ba)
         recall_ba_list.append(recall_ba)
+        f_score_ba_list.append(get_f_score(prec_ba, recall_ba))
+
+        # pdb.set_trace()
+        prec_rnd_list.append(prec_rnd)
+        recall_rnd_list.append(recall_rnd)
+        f_score_rnd_list.append(get_f_score(prec_rnd, recall_rnd))
 
     print('Avg Prec ER', np.mean(prec_er_list))
-    print('Avg Prec BA', np.mean(prec_ba_list))
     print('Avg Recall ER', np.mean(recall_er_list))
-    print('Avg Recall BA', np.mean(recall_ba_list))
+    print('Avg F-score ER', np.mean(f_score_er_list))
 
+    print('Avg Prec BA', np.mean(prec_ba_list))
+    print('Avg Recall BA', np.mean(recall_ba_list))
+    print('Avg F-score BA', np.mean(f_score_ba_list))
+
+    print('Avg Prec Rnd', np.mean(prec_rnd_list))
+    print('Avg Recall Rnd', np.mean(recall_rnd_list))
+    print('Avg F-score Rnd', np.mean(f_score_rnd_list))
     # L_out, Y_out = gl_sig_model(syn.graph_signals_er, 1000, syn.alpha_er, syn.beta_er)
     # # L_out[L_out < 1e-4] = 0
     # W_out = -L_out
