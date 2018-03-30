@@ -24,11 +24,12 @@ def gl_sig_model(inp_signal, max_iter, alpha, beta):
     G_c = matrix(G_mat)
     h_c = matrix(h_mat)
     curr_cost = np.linalg.norm(np.ones((num_vertices, num_vertices)), 'fro')
+    q_mat = alpha * np.dot(np.ravel(np.dot(Y, Y.T)), M_mat)
     for it in range(max_iter):
         # pdb.set_trace()
         # Update L
         prev_cost = curr_cost
-        q_mat = alpha * np.dot(np.ravel(np.dot(Y, Y.T)), M_mat)
+        # pdb.set_trace()
         q_c = matrix(q_mat)
         sol = solvers.qp(P_c, q_c, G_c, h_c, A_c, b_c)
         l_vech = np.array(sol['x'])
@@ -43,9 +44,15 @@ def gl_sig_model(inp_signal, max_iter, alpha, beta):
         # Update Y
         Y = np.dot(np.linalg.inv(np.eye(num_vertices) + alpha * L), inp_signal.T)
 
-        curr_cost = (np.linalg.norm(inp_signal.T - Y, 'fro') +
+        curr_cost = (np.linalg.norm(inp_signal.T - Y, 'fro')**2 +
                      alpha * np.dot(np.dot(Y.T, L), Y).trace() +
-                     beta * np.linalg.norm(L, 'fro'))
+                     beta * np.linalg.norm(L, 'fro')**2)
+        q_mat = alpha * np.dot(np.ravel(np.dot(Y, Y.T)), M_mat)
+        # pdb.set_trace()
+        calc_cost = (0.5 * np.dot(np.dot(l_vech.T, P_mat), l_vech).squeeze() +
+                     np.dot(q_mat, l_vech).squeeze() + np.linalg.norm(inp_signal.T - Y, 'fro')**2)
+        # pdb.set_trace()
+        assert np.allclose(curr_cost, calc_cost)
         # print(curr_cost)
         if np.abs(curr_cost - prev_cost) < 1e-4:
             # print('Stopped at Iteration', it)
@@ -198,6 +205,10 @@ def get_f_score(prec, recall):
     return 2 * prec * recall / (prec + recall)
 
 
+def get_MSE(L_out, L_gt):
+    return np.linalg.norm(L_out - L_gt, 'fro')
+
+
 if __name__ == "__main__":
     # np.random.seed(0)
     solvers.options['show_progress'] = False
@@ -216,6 +227,7 @@ if __name__ == "__main__":
     f_score_ba_list = []
     f_score_rnd_list = []
 
+    mse_rnd_list = []
     for i in tqdm(range(100)):
         np.random.seed(i)
         graph_signals_er, graph_signals_ba, graph_signals_rand = syn.get_graph_signals()
@@ -234,6 +246,8 @@ if __name__ == "__main__":
         recall_ba = get_recall_er_L(L_ba, L_ba_gt, thresh=syn.thr_ba)
 
         prec_rnd, recall_rnd = get_prec_recall_rnd_L(L_rnd, L_rnd_gt, thresh=syn.thr_rnd)
+
+        mse_rnd_list.append(get_MSE(L_rnd, L_rnd_gt))
 
         prec_er_list.append(prec_er)
         recall_er_list.append(recall_er)
@@ -259,6 +273,8 @@ if __name__ == "__main__":
     print('Avg Prec Rnd', np.mean(prec_rnd_list))
     print('Avg Recall Rnd', np.mean(recall_rnd_list))
     print('Avg F-score Rnd', np.mean(f_score_rnd_list))
+
+    print('Avg MSE Rnd', np.mean(mse_rnd_list))
     # L_out, Y_out = gl_sig_model(syn.graph_signals_er, 1000, syn.alpha_er, syn.beta_er)
     # # L_out[L_out < 1e-4] = 0
     # W_out = -L_out
