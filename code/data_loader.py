@@ -6,25 +6,10 @@ import pdb
 class synthetic_data_gen:
     def __init__(self, num_vertices=20):
         self.num_vertices = num_vertices
-        self.er_prob = 0.2
-        self.er_graph = nx.fast_gnp_random_graph(self.num_vertices, self.er_prob)
-        # self.num_edges = self.er_graph.number_of_edges()
-        # pdb.set_trace()
-        self.ba_graph = nx.barabasi_albert_graph(self.num_vertices, 1)
-        self.random_graph = nx.random_geometric_graph(self.num_vertices, 0.4)
-        for u, v, d in self.random_graph.edges(data=True):
-            # pdb.set_trace()
-            pos1 = np.array(self.random_graph.node[u]['pos'])
-            pos2 = np.array(self.random_graph.node[v]['pos'])
-            d['weight'] = np.exp(-np.linalg.norm(pos1 - pos2) / (2 * 0.5 * 0.5))
+        self.constants()
+        self.create_graphs()
 
-        self.mean = np.zeros(self.num_vertices)
-        self.cov_er = np.linalg.pinv(nx.laplacian_matrix(self.er_graph) +
-                                     np.eye(self.num_vertices) * 0.5)
-        self.cov_ba = np.linalg.pinv(nx.laplacian_matrix(self.ba_graph) +
-                                     np.eye(self.num_vertices) * 0.5)
-        self.cov_rand = np.linalg.pinv(nx.laplacian_matrix(self.random_graph) +
-                                       np.eye(self.num_vertices) * 0.5)
+    def constants(self):
         self.alpha_rnd = 0.012
         self.beta_rnd = 0.79
         self.thr_rnd = 0.06
@@ -36,14 +21,57 @@ class synthetic_data_gen:
         self.alpha_ba = 0.0025
         self.beta_ba = 0.05
         self.thr_ba = 0.18
-        # pdb.set_trace()
+
+    def create_graphs(self):
+        self.create_er_graph()
+        self.create_ba_graph()
+        self.create_random_graph()
         return
 
+    def create_er_graph(self):
+        self.er_prob = 0.2
+        self.er_graph = nx.fast_gnp_random_graph(self.num_vertices, self.er_prob)
+        self.er_normL = nx.normalized_laplacian_matrix(self.er_graph)
+        return
+
+    def create_ba_graph(self):
+        self.ba_graph = nx.barabasi_albert_graph(self.num_vertices, 1)
+        self.ba_normL = nx.normalized_laplacian_matrix(self.ba_graph)
+
+    def create_random_graph(self):
+        self.random_graph = nx.random_geometric_graph(self.num_vertices, 0.4)
+        for u, v, d in self.random_graph.edges(data=True):
+            pos1 = np.array(self.random_graph.node[u]['pos'])
+            pos2 = np.array(self.random_graph.node[v]['pos'])
+            d['weight'] = np.exp(-np.linalg.norm(pos1 - pos2) / (2 * 0.5 * 0.5))
+        self.rg_normL = nx.normalized_laplacian_matrix(self.random_graph)
+        return
+
+    def get_gs(self, graphL, num_sigs):
+        D, V = np.linalg.eig(graphL)
+        idx = D.argsort()[::-1]
+        D = D[idx]
+        V = V[:, idx]
+        sigma = np.linalg.pinv(np.diag(D))
+        mu = np.zeros(D.shape[0])
+        gs_coeff = np.random.multivariate_normal(mu, sigma, num_sigs)
+        # pdb.set_trace()
+        gs = np.dot(V, gs_coeff.T)
+
+        gs = gs + 0.5 * np.random.randn(*gs.shape)
+        # Shape of gs is num_nodes x num_sigs
+        # Output has each row as a signal
+        return gs.T
+
     def get_graph_signals(self):
-        # Each row is a signal
-        graph_signals_er = np.random.multivariate_normal(self.mean, self.cov_er, 100)
-        graph_signals_ba = np.random.multivariate_normal(self.mean, self.cov_ba, 100)
-        graph_signals_rand = np.random.multivariate_normal(self.mean, self.cov_rand, 100)
+        # Each row is supposed to be a signal
+        # pdb.set_trace()
+        graph_signals_er = self.get_gs(self.er_normL.toarray(), 100)
+        graph_signals_ba = self.get_gs(self.ba_normL.toarray(), 100)
+        graph_signals_rand = self.get_gs(self.rg_normL.toarray(), 100)
         return (graph_signals_er, graph_signals_ba, graph_signals_rand)
-# class data_loader:
-#     def __init__(self):x
+
+
+if __name__ == "__main__":
+    a1 = synthetic_data_gen()
+    g1, g2, g3 = a1.get_graph_signals()
